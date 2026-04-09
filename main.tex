@@ -90,6 +90,13 @@ User interaction via spatial constraints has been explored in segmentation~\cite
 \label{sec:method}
 %% ─────────────────────────────────────────────────────────────────
 
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/figure_D_multiclass.png}
+  \caption{\textbf{GRAPE concept similarity maps across the three TBX11K classes.} Each row shows one image (Healthy / Sick non-TB / Active TB). Columns show the per-concept similarity map (brighter = higher cosine similarity to the prototype atlas). Active TB images show strong activations in the upper-lobe region for the Active TB concept; healthy images show uniformly low activations. GRAPE's GNN task head aggregates these structured activations via the concept co-occurrence graph before classification.}
+  \label{fig:multiclass}
+\end{figure}
+
 \subsection{Preliminaries: Prototype-Based Concept Reasoning}
 \label{sec:prelim}
 
@@ -152,6 +159,13 @@ When a doctor provides a bounding box $\mathcal{B}$ intending to reinforce conce
     \bar{s}_k(\mathcal{B}) = \frac{1}{|\mathcal{B}|} \sum_{(i,j) \in \mathcal{B}} \mu_k(i,j) \quad \forall k,
 \end{equation}
 identifies the dominant concept $k^\dagger = \arg\max_k \bar{s}_k(\mathcal{B})$, and issues a safety warning if $k^\dagger \neq k^*$ and $\bar{s}_{k^\dagger}(\mathcal{B}) - \bar{s}_{k^*}(\mathcal{B}) > \eta$ (threshold $\eta = 0.05$). The feedback is not applied until the doctor confirms. This prevents silent error amplification in the prototype atlas.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/figure_C_interaction.png}
+  \caption{\textbf{GRAPE spatial interaction demo.} \emph{Left:} Active TB similarity map before interaction — the max activation (orange square) falls outside the GT bounding box (blue). \emph{Centre:} A doctor draws a positive bounding box (\texttt{bb+}) around the lesion region. \emph{Right:} After applying the importance-weighted interaction map (Eq.~12), the model's attention is redistributed toward the annotated region, improving localisation. The uncertainty map (Module B) is checked before this step to ensure the box region is not dominated by a conflicting concept.}
+  \label{fig:interaction}
+\end{figure}
 
 \paragraph{Train-time atlas refinement.}
 At training time, uncertainty maps additionally enable prototype discarding: a prototype $\mathbf{p}_{km}$ is masked from gradient updates if its per-image variance exceeds a threshold $\theta_U = 0.05$, preventing high-variance prototypes from destabilising contrastive training.
@@ -243,6 +257,13 @@ All four stages use BF16 automatic mixed precision on A100 hardware.
 
 Backbone: ResNet-50 pretrained on ImageNet, spatial features $\in \mathbb{R}^{2048 \times 7 \times 7}$ at resolution 224×224. Projector: two-layer MLP (2048→512→256) with BatchNorm, ReLU, and L2 normalisation. Prototype dimension $D=256$, $M=100$ prototypes per concept. Graph threshold $\tau=0.1$; GAT hidden dim 64, 4 heads, dropout 0.1. Stage 1: 30 epochs, lr=$10^{-4}$; Stage 3: 20 epochs, lr=$10^{-4}$; Stage 4: 20 epochs, lr=$10^{-3}$, label smoothing 0.05. Batch size 128, BF16 AMP on NVIDIA A100 80GB.
 
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/figure_B_similarity_maps.png}
+  \caption{\textbf{GRAPE per-concept similarity maps and uncertainty for a single Active TB image.} Left: input chest X-ray with GT bounding box (blue). Columns 2--4: similarity maps for each of the three TB-type concepts — the Active TB map fires strongly on the upper-lobe lesion region, while the other concepts show low activation. Right: prototype variance (uncertainty) map for Active TB — low variance in the lesion region indicates the 100 prototypes agree, validating the prediction. Orange square marks the max activation point; green = inside GT box (HIT).}
+  \label{fig:simmaps}
+\end{figure}
+
 \subsection{Main Results}
 
 Table~\ref{tab:tbx11k} and Table~\ref{tab:nih} present ablation results on TBX11K and NIH respectively, comparing GRAPE with variants obtained by removing each module.
@@ -282,6 +303,13 @@ Table~\ref{tab:tbx11k} and Table~\ref{tab:nih} present ablation results on TBX11
     \bottomrule
   \end{tabular}
 \end{table}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/figure_A_pointing_game.png}
+  \caption{\textbf{Pointing Game qualitative results on TBX11K (Active TB concept).} Each row shows one test image. \emph{Left:} input with GT bounding box (blue rectangle). \emph{Centre:} GRAPE similarity map overlay with max activation marked as a square (green = HIT, inside box; red = MISS). \emph{Right:} prototype baseline for comparison. GRAPE's structured prototype atlas more consistently localises the max activation within the annotated lesion region (overall PG = 17.1\% for Active TB vs.\ 6.3\% for the baseline).}
+  \label{fig:pg_qual}
+\end{figure}
 
 \paragraph{Key observations.}
 \textbf{(1) GNN is the dominant module for multi-class tasks.} On TBX11K, adding only the GNN head (best variant: GRAPE without VLM) yields +14.4\% F1 over the prototype baseline (0.8963 vs.\ 0.7519). The concept co-occurrence structure between the three TB finding types provides strong predictive signal that the linear head cannot exploit.
