@@ -113,7 +113,7 @@ def quick_grape_hit(model, image_t, gt_bbox):
         fp = model.projector.project_feature_map(f)
         sm = model.prototype_learner.get_similarity_maps(fp)  # (1,K,M,h,w)
     raw = sm[0, CONCEPT_IDX].amax(0).cpu().numpy()   # (h,w) 7×7
-    hit, _, _ = get_max_point_and_hit(raw, gt_bbox)
+    hit, *_ = get_max_point_and_hit(raw, gt_bbox)
     return hit
 
 def get_max_point_and_hit(sim_map_raw, bbox_224, input_size=IMAGE_SIZE):
@@ -125,10 +125,12 @@ def get_max_point_and_hit(sim_map_raw, bbox_224, input_size=IMAGE_SIZE):
       - return (hit, row_224, col_224) where row/col are upsampled coords for display
     """
     H, W = sim_map_raw.shape
+    cell_h = input_size // H
+    cell_w = input_size // W
     if bbox_224 is None:
         idx = np.argmax(sim_map_raw)
         r7, c7 = divmod(idx, W)
-        return False, int(r7 * input_size / H), int(c7 * input_size / W)
+        return False, r7 * cell_h, c7 * cell_w, cell_h, cell_w
 
     x1, y1, x2, y2 = bbox_224
     scale_x = W / input_size
@@ -144,10 +146,13 @@ def get_max_point_and_hit(sim_map_raw, bbox_224, input_size=IMAGE_SIZE):
     max_h, max_w = divmod(idx, W)
     hit = (bx1 <= max_w < bx2) and (by1 <= max_h < by2)
 
-    # Convert back to 224 space for display (center of the 7×7 cell)
-    row_224 = int((max_h + 0.5) * input_size / H)
-    col_224 = int((max_w + 0.5) * input_size / W)
-    return hit, row_224, col_224
+    # Cell top-left corner in 224 space (draw the full cell so it visually
+    # overlaps the GT box when hit — each cell is input_size//H ≈ 32 px wide)
+    cell_h = input_size // H   # 224 // 7 = 32
+    cell_w = input_size // W
+    row_tl = max_h * cell_h
+    col_tl = max_w * cell_w
+    return hit, row_tl, col_tl, cell_h, cell_w
 
 grape_hits, grape_misses = [], []
 for i in range(len(bbox_ds)):
@@ -358,13 +363,14 @@ for row, sample_idx in enumerate(active_tb_samples):
         }
         raw_7 = raw_7_map[col]
 
-        hit, r_max, c_max = get_max_point_and_hit(raw_7, gt_bbox)
+        hit, r_tl, c_tl, ch, cw = get_max_point_and_hit(raw_7, gt_bbox)
         if hit:
             hit_counts[col] += 1
         sq_edge = "#00cc00" if hit else "#ff2222"
+        # Draw the full 7×7 cell (~32×32 px) so it visually overlaps GT box on hits
         ax.add_patch(patches.Rectangle(
-            (c_max - 6, r_max - 6), 12, 12,
-            linewidth=2, edgecolor="white", facecolor=sq_edge
+            (c_tl, r_tl), cw, ch,
+            linewidth=2, edgecolor="white", facecolor=sq_edge, alpha=0.55
         ))
         ax.axis("off")
 
