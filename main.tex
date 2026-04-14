@@ -311,6 +311,13 @@ Table~\ref{tab:tbx11k} and Table~\ref{tab:nih} present ablation results on TBX11
   \label{fig:pg_qual}
 \end{figure}
 
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/figure_E_pg_comparison.png}
+  \caption{\textbf{Qualitative Pointing Game comparison across six explanation methods on TBX11K (Active TB concept).} Each row is one test image; the leftmost column shows the input with the ground-truth bounding box (blue rectangle). Each subsequent column overlays a heatmap from one explanation method on the same image; the coloured square marks the maximum activation point — \textcolor{green!60!black}{green} $=$ HIT (inside GT box), \textcolor{red}{red} $=$ MISS. All methods share the same ResNet-50 backbone; CBM uses a 1$\times$1 conv class activation map, ProtoPNet-style shows the top-1 prototype similarity map, PIP-Net-style shows softmax-normalised patch attention, ProtoTree-style shows a winner-take-all Gaussian blob, and GRAPE augments the CSR multi-prototype map with GNN reweighting. GRAPE and the prototype-family methods achieve 50\% hit rate on this sample; the plain CAM-based CBM scores 0\%.}
+  \label{fig:pg_compare}
+\end{figure}
+
 \paragraph{Key observations.}
 \textbf{(1) GNN is the dominant module for multi-class tasks.} On TBX11K, adding only the GNN head (best variant: GRAPE without VLM) yields +14.4\% F1 over the prototype baseline (0.8963 vs.\ 0.7519). The concept co-occurrence structure between the three TB finding types provides strong predictive signal that the linear head cannot exploit.
 
