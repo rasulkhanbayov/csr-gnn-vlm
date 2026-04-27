@@ -42,6 +42,9 @@ def parse_args():
     parser.add_argument("--backbone", type=str, default="resnet50")
     parser.add_argument("--num_prototypes", type=int, default=100)
     parser.add_argument("--proto_dim", type=int, default=256)
+    parser.add_argument("--task_head_type", type=str, default="gat",
+                        choices=["gat", "mlgcn", "addgcn"],
+                        help="Graph task head variant for ablation H3")
 
     # Improvement toggles (ablation)
     parser.add_argument("--no_gnn", action="store_true", help="Disable [A] GNN task head")
@@ -87,6 +90,7 @@ def build_model(args, config: dict, num_concepts: int, num_classes: int) -> CSRM
         use_gnn=not args.no_gnn,
         use_uncertainty=not args.no_uncertainty,
         use_vlm=not args.no_vlm,
+        task_head_type=args.task_head_type,
         gnn_hidden_dim=config.get("gnn", {}).get("hidden_dim", 64),
         gnn_num_heads=config.get("gnn", {}).get("num_heads", 4),
         vlm_text_dim=config.get("vlm", {}).get("text_dim", 768),

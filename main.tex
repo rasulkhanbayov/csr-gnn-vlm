@@ -357,6 +357,34 @@ Table~\ref{tab:tbx11k} and Table~\ref{tab:nih} present ablation results on TBX11
   \end{tabular}
 \end{table}
 
+\subsection{Graph Head Comparison: GAT vs ML-GCN vs ADD-GCN}
+\label{sec:graph_heads}
+
+GRAPE uses a GAT task head~\cite{velickovic2018graph} for its learned, edge-conditioned attention.
+Table~\ref{tab:graph_heads} ablates this choice by replacing the GAT with two established graph classification baselines: ML-GCN~\cite{chen2019multilabel} (standard 2-layer GCN with symmetric normalisation) and ADD-GCN~\cite{ye2020attention} (static co-occurrence graph combined with a per-sample dynamic cosine-similarity graph).
+All three heads receive the same input — prototype similarity scores $(B, K, M)$ from frozen Stage 1–3 weights — and are trained for 20 epochs (Stage 4 only).
+
+\begin{table}[t]
+  \caption{Graph task head comparison on TBX11K. All heads trained on identical frozen backbone/projector/prototypes (Stage 1--3 shared); only Stage~4 differs. All graph heads use the same co-occurrence graph ($\tau=0.10$).}
+  \label{tab:graph_heads}
+  \centering
+  \begin{tabular}{lccc}
+    \toprule
+    Task head & Macro F1 $\uparrow$ & PG $\uparrow$ & $\Delta$ F1 vs linear \\
+    \midrule
+    Linear (CSR baseline)              & 0.7519           & 0.0628           & — \\
+    ML-GCN~\cite{chen2019multilabel}   & 0.8983           & 0.1401           & +14.6\% \\
+    ADD-GCN~\cite{ye2020attention}     & 0.8589           & \textbf{0.1449}  & +10.7\% \\
+    \textbf{GAT (GRAPE)}               & \textbf{0.8963}  & 0.1401           & +14.4\% \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+All three graph heads substantially outperform the linear baseline (+10.7--14.6\% F1), confirming that the concept co-occurrence structure is the key driver of GRAPE's gain, not the specific message-passing mechanism.
+ML-GCN achieves marginally the highest F1 (0.8983 vs.\ 0.8963 for GAT), but the difference is within the seed variance range (std $\approx 0.08$) observed in Table~\ref{tab:compare} and is not statistically significant.
+ADD-GCN achieves the highest PG (0.1449) at the cost of slightly lower F1 (0.8589), suggesting its dynamic per-sample graph better preserves spatial prototype structure at the expense of discriminative power.
+We retain the GAT head as GRAPE's default because its learned, edge-conditioned attention weights are directly interpretable — each edge weight quantifies how strongly one concept's activation influences another's classification — a property absent in standard GCN variants.
+
 \subsection{Inference Speed Benchmark}
 \label{sec:speed}
 
@@ -446,6 +474,30 @@ Each condition is repeated with $T=5$ random seeds and the mean $\pm$ std report
 Table~\ref{tab:safety} shows that Module B catches \textbf{87--90\%} of misdrawn boxes across all miscorrection rates, with a false-positive rate of 21.7\% when all boxes are correct.
 The FP rate reflects cases where the model's dominant concept inside the region differs from the ground-truth label — i.e., the model is genuinely uncertain about that region — so a modest FP rate is expected and clinically preferable to missing real errors.
 These results confirm the qualitative claim in §\ref{sec:uncertainty} that the safety check provides meaningful protection against erroneous spatial feedback.
+
+\paragraph{Comparison with MC-Dropout uncertainty (N5).}
+A natural alternative to prototype variance as the uncertainty signal is MC-Dropout~\cite{gal2016dropout}: run $T=30$ stochastic forward passes with dropout enabled at inference, then use either the variance of similarity scores across passes (Variant~A) or the predictive entropy (Variant~B) to trigger warnings.
+Table~\ref{tab:n5} reports TP and FP rates for all three methods, with MC-Dropout thresholds calibrated to match the prototype-variance FP rate ($\approx 21.7\%$).
+
+\begin{table}[t]
+  \caption{Uncertainty method comparison for Module B safety check (TBX11K \texttt{bbox\_eval}, 207 pairs, $T_\text{eval}=5$ trials, miscorrection rate $p=0.5$). MC-Dropout thresholds calibrated to match the prototype-variance FP rate ($\approx21.7\%$) for a fair TP comparison. $T_\text{MC}=30$ stochastic passes.}
+  \label{tab:n5}
+  \centering
+  \begin{tabular}{lccc}
+    \toprule
+    Uncertainty method & TP rate $\uparrow$ & FP rate & $T_\text{MC}$ passes \\
+    \midrule
+    \textbf{Prototype variance (GRAPE)}       & $\mathbf{0.903 \pm 0.029}$ & $0.217 \pm 0.000$ & 1 \\
+    MC-Dropout score variance (Var.~A)        & $0.004 \pm 0.008$          & $0.000$           & 30 \\
+    MC-Dropout pred.\ entropy (Var.~B)        & $0.234 \pm 0.049$          & $0.227$           & 30 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Prototype variance substantially outperforms both MC-Dropout variants.
+Variant~A (score variance) fails entirely: dropout injected into the backbone's feature map does not propagate to prototype cosine similarities because L2 normalisation suppresses variance — scores are stable across stochastic passes regardless of misdraw.
+Variant~B (prediction entropy) achieves only 23.4\% TP even when calibrated to the same FP level, because global prediction uncertainty is weakly correlated with local spatial misdraw.
+This confirms that prototype-level spatial disagreement is the right uncertainty signal for region-based safety checks, and MC-Dropout is not an effective substitute at 30$\times$ the inference cost.
 
 %% ─────────────────────────────────────────────────────────────────
 \subsection{Module C: Zero-Shot Concept Addition}
@@ -629,6 +681,7 @@ This work used an NVIDIA A100 80GB GPU.
   \item[\textbf{A.}] Hyperparameter Sensitivity — $\tau$ and $\eta$ sweeps (p.~\pageref{app:hparams})
   \item[\textbf{B.}] Dataset Details (p.~\pageref{app:datasets})
   \item[\textbf{C.}] Graph Structure (p.~\pageref{app:graph})
+  \item[\textbf{D.}] End-to-End Training Ablation (N4) (p.~\pageref{app:n4})
 \end{itemize}
 
 \bigskip
