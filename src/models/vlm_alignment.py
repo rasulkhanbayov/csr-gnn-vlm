@@ -53,6 +53,50 @@ CONCEPT_DESCRIPTIONS = {
             "Focal areas of increased density within the lung or mediastinum, representing "
             "calcium deposits from prior granulomatous infection."
         ),
+        "cardiomegaly": (
+            "Enlarged cardiac silhouette with cardiothoracic ratio greater than 0.5 on frontal "
+            "chest X-ray, indicating cardiac enlargement or pericardial effusion."
+        ),
+        "consolidation": (
+            "Homogeneous airspace opacity replacing normal lung aeration with air bronchograms, "
+            "consistent with pneumonia, hemorrhage, or other alveolar filling process on chest X-ray."
+        ),
+        "ild": (
+            "Interstitial lung disease with diffuse reticular or reticulonodular opacities, "
+            "honeycombing, and ground-glass attenuation indicating parenchymal fibrosis or inflammation."
+        ),
+        "infiltration": (
+            "Ill-defined hazy opacity in the lung parenchyma without complete airspace consolidation, "
+            "representing inflammatory or infectious infiltrate visible on chest X-ray."
+        ),
+        "lung_opacity": (
+            "Increased density within the lung field obscuring vascular markings, representing "
+            "ground-glass opacity, consolidation, or mixed attenuation on chest X-ray."
+        ),
+        "nodule_mass": (
+            "Discrete rounded or irregular pulmonary opacity ranging from nodule (<3 cm) to mass "
+            "(≥3 cm), with well-defined or spiculated margins requiring malignancy workup on chest X-ray."
+        ),
+        "other_lesion": (
+            "Miscellaneous thoracic abnormality not categorized as a primary finding, including "
+            "unusual opacities, artifacts, or incidental findings visible on chest X-ray."
+        ),
+        "pleural_effusion": (
+            "Fluid accumulation in the pleural space causing blunting of the costophrenic angle and "
+            "a meniscus-shaped opacity at the lung base on upright chest X-ray."
+        ),
+        "pleural_thickening": (
+            "Thickening of the pleural lining visible as an irregular soft tissue density along the "
+            "chest wall, often resulting from prior inflammation or asbestos exposure on chest X-ray."
+        ),
+        "pneumothorax": (
+            "Absence of lung markings at the lung apex with a visible pleural line indicating "
+            "air in the pleural space causing partial or complete lung collapse on chest X-ray."
+        ),
+        "pulmonary_fibrosis": (
+            "Bilateral reticular opacities, traction bronchiectasis, and volume loss in the lower "
+            "lobes indicating irreversible fibrotic remodeling of lung parenchyma on chest X-ray."
+        ),
     },
     "isic": {
         "pigment_network": (

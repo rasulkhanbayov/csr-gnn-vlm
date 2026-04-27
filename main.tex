@@ -254,6 +254,14 @@ All four stages use BF16 automatic mixed precision on A100 hardware.
 
 \textbf{NIH ChestX-ray14}~\cite{wang2017chestxray14} contains over 100k frontal-view chest X-rays labelled with 14 finding types. We use a 20k-image subset with the 14 findings as concept labels ($K=14$) and binary task labels (any-finding vs.\ no-finding). We additionally use a 12,693-image bbox-annotated subset (964 annotations, 709 images with bounding boxes) for Pointing Game evaluation.
 
+\textbf{VinDr-CXR}~\cite{vindrcxr2022} provides 18{,}000 frontal chest X-rays (15{,}000 training, 3{,}000 test) collected from two Vietnamese hospitals and annotated by three board-certified radiologists.
+Each image is independently labelled with 14 findings (including \emph{aortic enlargement}, \emph{ILD}, \emph{cardiomegaly}, and \emph{pleural effusion}) and per-finding bounding boxes.
+We use $K=14$ concept labels with a consensus rule: a finding is positive if $\geq$2/3 radiologists agree.
+Task labels are binary (any-finding vs.\ no-finding).
+Up to 500 images with consensus bounding boxes form the \texttt{bbox\_eval} split for Pointing Game evaluation.
+This dataset is used exclusively for the cross-dataset generalisation experiment (§\ref{sec:n10}); all GRAPE design decisions were made using TBX11K alone.
+\label{sec:datasets}
+
 \subsection{Evaluation Metrics}
 
 \textbf{Macro F1} measures classification performance averaged across classes, accounting for class imbalance.
@@ -571,6 +579,39 @@ On NIH, CheXNet (mean AUC 0.841 over 14 findings) and MedCLIP use different spli
 GRAPE improves over the directly comparable CSR baseline by +9.7\% macro-F1, which is the primary claim.
 
 %% ─────────────────────────────────────────────────────────────────
+\subsection{Cross-Dataset Generalisation: VinDr-CXR (N10)}
+\label{sec:n10}
+%% ─────────────────────────────────────────────────────────────────
+
+To test whether the GRAPE improvements generalise beyond TBX11K, we train and evaluate on VinDr-CXR~\cite{vindrcxr2022}: 18{,}000 frontal chest X-rays annotated by three independent radiologists with 14 radiological finding labels and per-finding bounding boxes.
+We apply the same consensus rule as our preprocessing (§\ref{sec:datasets}): a finding is positive if $\geq$2/3 radiologists agree.
+Class-level labels collapse to binary (\texttt{no\_finding} / \texttt{finding}) for the classifier, while all 14 concepts remain active for the prototype and interaction layers.
+
+\begin{table}[t]
+  \caption{Cross-dataset generalisation on VinDr-CXR (N10).
+           Same four-stage curriculum as TBX11K; identical hyper-parameters except
+           graph threshold $\tau=0.05$ (findings co-occur more densely).
+           Results will be filled upon experimental completion.}
+  \label{tab:n10}
+  \centering
+  \begin{tabular}{lccc}
+    \toprule
+    Variant & Macro F1 & Pointing Game & $\Delta$F1 vs.\ CSR \\
+    \midrule
+    CSR baseline (no A/B/C)   & \textit{TBD} & \textit{TBD} & — \\
+    GRAPE w/o GNN             & \textit{TBD} & \textit{TBD} & \textit{TBD} \\
+    GRAPE w/o VLM             & \textit{TBD} & \textit{TBD} & \textit{TBD} \\
+    \textbf{GRAPE full}       & \textit{TBD} & \textit{TBD} & \textit{TBD} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Expected pattern.}
+On VinDr-CXR the GNN module should again be the dominant driver because finding co-occurrences are strong (pleural effusion and cardiomegaly frequently co-occur; consolidation and infiltration overlap).
+The VLM alignment is expected to help more than on TBX11K because all 14 findings have clear clinical descriptions that BioViL-T was trained on, whereas TBX11K's three TB categories are coarser and less represented in the BioViL-T pretraining corpus.
+Pointing Game scores may be lower overall due to multi-finding co-occurrence (the dominant concept in a region may legitimately match several findings simultaneously), but the relative ordering across ablation variants should mirror TBX11K.
+
+%% ─────────────────────────────────────────────────────────────────
 \section{Discussion}
 \label{sec:discussion}
 %% ─────────────────────────────────────────────────────────────────
@@ -672,6 +713,8 @@ This work used an NVIDIA A100 80GB GPU.
 
 [22] Koh, P.W., Nguyen, T., Tang, Y.S., Mussmann, S., Pierson, E., Kim, B., \& Liang, P.\ (2020) Concept Bottleneck Models. In \textit{ICML 2020}.
 
+[23] Nguyen, H.Q., Lam, K., Le, L.T., Pham, H.H., Tran, D.Q., Nguyen, D.B., \ldots\ \& Vu, V.\ (2022) VinDr-CXR: An open dataset of chest X-rays with radiologist annotations. \textit{Scientific Data}, 9, 429.
+
 }
 
 \appendix
@@ -682,6 +725,7 @@ This work used an NVIDIA A100 80GB GPU.
   \item[\textbf{B.}] Dataset Details (p.~\pageref{app:datasets})
   \item[\textbf{C.}] Graph Structure (p.~\pageref{app:graph})
   \item[\textbf{D.}] End-to-End Training Ablation (N4) (p.~\pageref{app:n4})
+  \item[\textbf{E.}] VinDr-CXR Preprocessing Details (p.~\pageref{app:vindrcxr})
 \end{itemize}
 
 \bigskip
@@ -813,6 +857,30 @@ TBX11K COCO annotations store boxes in original image coordinates (variable reso
 \label{app:graph}
 
 On TBX11K ($K=3$), the co-occurrence graph has 3 nodes and 4 edges (threshold $\tau=0.1$). The three TB-type concepts form a dense triangle since they frequently co-occur within the same image. On NIH ($K=14$), the graph has 14 nodes and varies between 20--40 edges depending on threshold. Concepts like Infiltration–Consolidation and Effusion–Atelectasis form strong edges.
+
+%% ─────────────────────────────────────────────────────────────────
+\section{VinDr-CXR Preprocessing Details}
+\label{app:vindrcxr}
+%% ─────────────────────────────────────────────────────────────────
+
+\paragraph{Source and access.}
+VinDr-CXR~\cite{vindrcxr2022} is distributed via PhysioNet (doi:10.13026/x4k8-8538) under a Data Use Agreement (DUA). Access requires completing the DUA at \url{https://physionet.org/content/vindr-cxr/1.0.0/}.
+
+\paragraph{DICOM conversion.}
+Raw DICOM files are converted to 1024$\times$1024 grayscale PNGs using pydicom. Images with \texttt{PhotometricInterpretation = MONOCHROME1} (bright = air) are inverted before normalisation. VOI LUT windowing is applied where available. Pixel values are min-max normalised to [0, 255] and converted to 3-channel RGB for compatibility with the ImageNet-pretrained ResNet-50 backbone.
+
+\paragraph{Consensus labelling.}
+Each image has three independent radiologist annotations. A finding is labelled positive if $\geq$2/3 radiologists agree (consensus positive). The binary task label (\texttt{finding} vs.\ \texttt{no\_finding}) is derived from whether any finding is consensus-positive.
+Bounding boxes are computed as the union (bounding rectangle) of all radiologist boxes for a given finding in a given image.
+
+\paragraph{Splits.}
+The 15,000 training images are randomly shuffled (seed 42) and split 70/15/15 into train/val/test. Up to 500 images with $\geq$1 consensus bounding box are carved out as the \texttt{bbox\_eval} split before the train/val/test assignment, ensuring sufficient Pointing Game evaluation coverage. The 3,000 official test images are assigned to the \texttt{test} split (no bounding boxes, pure classification evaluation).
+
+\paragraph{Concept descriptions (VLM alignment).}
+All 14 VinDr-CXR findings have clinical text descriptions for Module C VLM alignment, encoded with the frozen BioViL-T encoder. Descriptions follow the same format as TBX11K and NIH (one sentence describing the radiological appearance of each finding on frontal chest X-ray).
+
+\paragraph{Graph threshold.}
+We use $\tau=0.05$ (vs.\ $\tau=0.10$ for TBX11K) because VinDr-CXR findings co-occur more densely: cardiomegaly--pleural effusion, consolidation--infiltration, and aortic enlargement--cardiomegaly are common co-occurring pairs, producing a denser co-occurrence graph with 14 nodes and approximately 40--60 edges.
 
 %% ─────────────────────────────────────────────────────────────────
 \newpage
