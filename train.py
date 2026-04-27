@@ -47,6 +47,8 @@ def parse_args():
     parser.add_argument("--no_gnn", action="store_true", help="Disable [A] GNN task head")
     parser.add_argument("--no_uncertainty", action="store_true", help="Disable [B] uncertainty head")
     parser.add_argument("--no_vlm", action="store_true", help="Disable [C] VLM alignment")
+    parser.add_argument("--end_to_end", action="store_true",
+                        help="N4 ablation: train all params jointly (no staged curriculum)")
 
     # Training
     parser.add_argument("--epochs", type=int, default=None,
@@ -160,20 +162,24 @@ def main():
     if args.resume_from:
         trainer.load_checkpoint(args.resume_from)
 
-    stages = [int(s) for s in args.stages.split(",")]
-    print(f"\nRunning stages: {stages}\n")
+    if args.end_to_end:
+        print("\nRunning: end-to-end (no staged curriculum)\n")
+        trainer.run_end_to_end(train_loader, val_loader)
+    else:
+        stages = [int(s) for s in args.stages.split(",")]
+        print(f"\nRunning stages: {stages}\n")
 
-    if 1 in stages:
-        trainer.run_stage1(train_loader, val_loader)
+        if 1 in stages:
+            trainer.run_stage1(train_loader, val_loader)
 
-    if 2 in stages:
-        trainer.run_stage2(train_loader)
+        if 2 in stages:
+            trainer.run_stage2(train_loader)
 
-    if 3 in stages:
-        trainer.run_stage3(train_loader)
+        if 3 in stages:
+            trainer.run_stage3(train_loader)
 
-    if 4 in stages:
-        trainer.run_stage4(train_loader, val_loader, build_graph_from=train_loader)
+        if 4 in stages:
+            trainer.run_stage4(train_loader, val_loader, build_graph_from=train_loader)
 
     # ── Final evaluation ──────────────────────────────────────────────────────
     results = trainer.evaluate(test_loader)

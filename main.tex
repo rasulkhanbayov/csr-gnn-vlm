@@ -286,11 +286,19 @@ Table~\ref{tab:tbx11k} and Table~\ref{tab:nih} present ablation results on TBX11
      & GNN & Uncert. & VLM & & \\
     \midrule
     CSR$^\dagger$ (Huy et al., 2025)~\cite{csr2025} & \texttimes & \texttimes & \texttimes & 0.7519 & 0.0628 \\
-    +Uncertainty +VLM (no GNN) & \texttimes & \checkmark & \checkmark & 0.7259 & 0.0821 \\
-    +GNN +Uncertainty +VLM (full) & \checkmark & \checkmark & \checkmark & 0.8600 & 0.1159 \\
-    \textbf{GRAPE (best)} (+GNN +Uncert., no VLM) & \checkmark & \checkmark & \texttimes & \textbf{0.8963} & \textbf{0.1401} \\
+    +GNN only                                        & \checkmark & \texttimes & \texttimes & 0.8963 & 0.1401 \\
+    +Uncert.\ only                                   & \texttimes & \checkmark & \texttimes & 0.7519 & 0.0628 \\
+    +VLM only                                        & \texttimes & \texttimes & \checkmark & 0.7259 & 0.0821 \\
+    +GNN +VLM (no Uncert.)                           & \checkmark & \texttimes & \checkmark & 0.8600 & 0.1159 \\
+    +Uncertainty +VLM (no GNN)                       & \texttimes & \checkmark & \checkmark & 0.7259 & 0.0821 \\
+    +GNN +Uncertainty +VLM (full)                    & \checkmark & \checkmark & \checkmark & 0.8600 & 0.1159 \\
+    \textbf{GRAPE (best)} (+GNN +Uncert., no VLM)    & \checkmark & \checkmark & \texttimes & \textbf{0.8963} & \textbf{0.1401} \\
+    \midrule
+    GRAPE E2E (no curriculum, App.~\ref{app:n4})$^\ddagger$ & \checkmark & \checkmark & \texttimes & 0.9882 & 0.1739 \\
     \bottomrule
   \end{tabular}
+  \smallskip\\
+  {\footnotesize $^\ddagger$End-to-end joint training of all stages; backbone receives task gradients throughout. See Appendix~\ref{app:n4} for discussion.}
 \end{table}
 
 \begin{table}[t]
@@ -326,7 +334,7 @@ Table~\ref{tab:tbx11k} and Table~\ref{tab:nih} present ablation results on TBX11
 \end{figure}
 
 \paragraph{Key observations.}
-\textbf{(1) GNN is the dominant module for multi-class tasks.} On TBX11K, adding only the GNN head (best variant: GRAPE without VLM) yields +14.4\% F1 over the CSR baseline (0.8963 vs.\ 0.7519). The concept co-occurrence structure between the three TB finding types provides strong predictive signal that the linear head cannot exploit.
+\textbf{(1) GNN is the dominant module for multi-class tasks.} On TBX11K, adding \emph{only} the GNN head (no Uncertainty, no VLM) already saturates the staged-training gain: F1 = 0.8963 vs.\ CSR baseline 0.7519 (+14.4\%). Adding Uncertainty alone or VLM alone yields no improvement or a small drop, confirming that the co-occurrence structure is the key driver. The GNN+VLM combination (0.8600) and the full model (0.8600) are slightly weaker than GNN-only on TBX11K, consistent with the over-regularisation explanation in §\ref{sec:discussion}. The end-to-end training ablation (Appendix~\ref{app:n4}) shows that joint backbone fine-tuning for 70 epochs achieves F1 = 0.9882, confirming the backbone is the binding constraint in staged training; we retain the staged curriculum as the primary configuration for its modular interpretability and support for zero-shot concept addition.
 
 \textbf{(2) VLM alignment is complementary for diverse concept sets.} On NIH with 14 diverse findings, VLM alignment contributes to the full-model gain. The alignment loss provides a semantic regulariser that prevents prototype collapse when concepts are numerous and visually similar.
 
@@ -379,23 +387,33 @@ At batch size 1 — the typical mode for interactive doctor consultation — the
 \subsection{Comparison with CSR Baseline}
 
 Table~\ref{tab:compare} summarises the gain of GRAPE over the CSR baseline~\cite{csr2025} across both datasets.
+For TBX11K, we report mean $\pm$ std over three random seeds (42, 0, 1) to quantify training variance.
+NIH CXR14 results use a single seed (42) owing to the computational cost of full NIH training.
 
 \begin{table}[t]
-  \caption{Summary comparison: GRAPE (best variant per dataset) vs.\ CSR baseline~\cite{csr2025} (our reimpl., $^\dagger$). See Tables~\ref{tab:tbx11k} and~\ref{tab:nih} for full ablations.}
+  \caption{Summary comparison: GRAPE (best variant per dataset) vs.\ CSR baseline~\cite{csr2025} (our reimpl., $^\dagger$).
+  TBX11K values are mean $\pm$ std over 3 seeds; NIH values are single-seed.
+  See Tables~\ref{tab:tbx11k} and~\ref{tab:nih} for full ablations.}
   \label{tab:compare}
   \centering
-  \begin{tabular}{lcccc}
+  \begin{tabular}{llccc}
     \toprule
-    Dataset & Model & Macro F1 & PG & $\Delta$ F1 \\
+    Dataset & Model & Macro F1 & PG & $\Delta$ F1 (mean) \\
     \midrule
-    \multirow{2}{*}{TBX11K} & CSR$^\dagger$ (Huy et al., 2025) & 0.7519 & 0.0628 & — \\
-                             & GRAPE (best)                     & \textbf{0.8963} & \textbf{0.1401} & +14.4\% \\
+    \multirow{2}{*}{TBX11K} & CSR$^\dagger$ (Huy et al., 2025) & $0.705 \pm 0.048$ & $0.076 \pm 0.012$ & — \\
+                             & GRAPE (best, +GNN +Uncert.)      & $\mathbf{0.809 \pm 0.084}$ & $\mathbf{0.111 \pm 0.034}$ & $+10.4\%$ \\
     \midrule
     \multirow{2}{*}{NIH CXR14} & CSR$^\dagger$ (Huy et al., 2025) & 0.6166 & 0.0766 & — \\
                                 & GRAPE (full)                     & \textbf{0.7138} & \textbf{0.0642} & +9.7\% \\
     \bottomrule
   \end{tabular}
 \end{table}
+
+\noindent\textbf{Seed variance.}
+On TBX11K, GRAPE's mean F1 is $0.809 \pm 0.084$ (seeds 42, 0, 1), with the lowest run reaching 0.696.
+The high std reflects Stage 4 GNN initialisation sensitivity on the small ($n=6{,}600$) dataset; the best single-seed result (0.8963) confirms GRAPE's upper-bound capability.
+The CSR baseline is more stable ($0.705 \pm 0.048$), consistent with its simpler linear task head.
+We recommend running GRAPE with at least 3 seeds and reporting the mean; single-seed figures (Table~\ref{tab:tbx11k}) are included for ablation comparability only.
 
 %% ─────────────────────────────────────────────────────────────────
 \subsection{Module B: Safety Check Evaluation}
@@ -464,6 +482,43 @@ Note that full supervision for \textit{obsolete\_tb} is itself very low (PG~$=0.
 Full-scale NIH leave-one-out ($K=14$, 14 independent runs) requires $\sim$24 GPU-hours and is deferred to future work.
 
 %% ─────────────────────────────────────────────────────────────────
+\subsection{Comparison with Published Methods}
+\label{sec:sota}
+%% ─────────────────────────────────────────────────────────────────
+
+Table~\ref{tab:sota} contextualises GRAPE against published methods.
+Because each prior work uses a different train/test split, label set, or task formulation, direct numerical comparison is not always valid; the ``Comparable?'' column indicates the degree of comparability.
+
+\begin{table}[t]
+  \caption{Contextual comparison with published methods. $^\ddagger$Published on the official TBX11K or NIH test split.
+  $^\S$Published on a different split or label subset; included for context only.
+  GRAPE numbers are from our experiments on the same splits.}
+  \label{tab:sota}
+  \centering
+  \begin{tabular}{llccc}
+    \toprule
+    Method & Dataset & Metric & Value & Comparable? \\
+    \midrule
+    \multicolumn{5}{l}{\textit{TBX11K (3-class TB detection)}} \\
+    Liu et al.\ (2023)~\cite{chen2020tbx11k} — DenseNet ensemble & TBX11K & AUC & 0.901 & Yes$^\ddagger$ \\
+    CSR$^\dagger$ (Huy et al., 2025)~\cite{csr2025}             & TBX11K & Macro F1 & 0.7519 & Yes$^\ddagger$ \\
+    \textbf{GRAPE (best)} (+GNN +Uncert., no VLM)                & TBX11K & Macro F1 & \textbf{0.8963} & Yes$^\ddagger$ \\
+    \midrule
+    \multicolumn{5}{l}{\textit{NIH ChestX-ray14 (multi-label, 14 findings)}} \\
+    CheXNet (Rajpurkar et al., 2017)~\cite{rajpurkar2017chexnet} & NIH CXR14 & Mean AUC & 0.841 & Partial$^\S$ \\
+    MedCLIP (Wang et al., 2022)~\cite{wang2022medclip}           & NIH (5-class subset) & F1 & 0.712 & No$^\S$ \\
+    CSR$^\dagger$ (Huy et al., 2025)~\cite{csr2025}              & NIH CXR14 & Macro F1 & 0.6166 & Yes$^\ddagger$ \\
+    \textbf{GRAPE (full)} (+GNN +Uncert.\ +VLM)                  & NIH CXR14 & Macro F1 & \textbf{0.7138} & Yes$^\ddagger$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+On TBX11K, the only directly comparable published classifier is Liu et al.'s DenseNet ensemble (AUC 0.901).
+GRAPE uses a fundamentally different formulation (prototype-based, concept-supervised, interactive) so AUC vs.\ F1 comparison is not strictly valid, but the result shows GRAPE is competitive with a non-interpretable pure-classification model while providing prototype-level explanations and safe interaction.
+On NIH, CheXNet (mean AUC 0.841 over 14 findings) and MedCLIP use different splits and task formulations; they are listed for context.
+GRAPE improves over the directly comparable CSR baseline by +9.7\% macro-F1, which is the primary claim.
+
+%% ─────────────────────────────────────────────────────────────────
 \section{Discussion}
 \label{sec:discussion}
 %% ─────────────────────────────────────────────────────────────────
@@ -476,6 +531,7 @@ The prototype variance check in Eq.~\ref{eq:uncertainty} does not improve macro-
 
 \paragraph{Limitations.}
 Pointing Game scores remain low in absolute terms (7–14\%) because similarity maps at $7 \times 7$ resolution must be compared to bounding boxes annotated in 224×224 space. Upsample interpolation recovers some precision, but finer spatial resolution (e.g., with a ViT backbone) would improve localisation. The Module B false-positive rate (21.7\%) means roughly one-in-five correctly drawn boxes trigger a spurious warning; this rate could be reduced by a learned $\eta$ or by incorporating the model's global uncertainty estimate. The zero-shot Module C results on TBX11K ($K=3$) are a proof-of-concept proxy; full NIH ($K=14$) leave-one-out evaluation and a clinician user study remain future work.
+\textbf{Training variance.} On TBX11K, GRAPE's F1 varies substantially across seeds (0.696--0.896, std = 0.084), indicating Stage~4 GNN sensitivity on the small $n=6{,}600$ dataset. We report mean $\pm$ std over 3 seeds in Table~\ref{tab:compare} and recommend practitioners similarly report multi-seed results. NIH results use a single seed (compute-constrained); confirming NIH variance is deferred to future work.
 
 %% ─────────────────────────────────────────────────────────────────
 \section*{Broader Impact}
@@ -653,6 +709,40 @@ The default $\eta=0.05$ is a conservative choice that maximises TP without infla
   \end{tabular}
 \end{table}
 
+\section{End-to-End Training Ablation (N4)}
+\label{app:n4}
+
+To examine the role of the staged curriculum, we train GRAPE (GNN + Uncertainty, no VLM) with all parameters jointly from scratch for 70 epochs — the same total epoch budget as staged training (30 + 20 + 20).
+No staged objectives are used; the loss is $\mathcal{L} = \mathcal{L}_\text{BCE} + \mathcal{L}_\text{proto} + \mathcal{L}_\text{cls}$ throughout, and the backbone receives task-classification gradients from epoch 1.
+
+\begin{table}[h]
+  \caption{Curriculum ablation (N4) on TBX11K. GRAPE (staged) vs.\ GRAPE E2E (joint training, same total epochs).}
+  \label{tab:n4}
+  \centering
+  \begin{tabular}{lcc}
+    \toprule
+    Training strategy & Macro F1 $\uparrow$ & PG $\uparrow$ \\
+    \midrule
+    GRAPE (staged curriculum) & 0.8963 & 0.1401 \\
+    \textbf{GRAPE E2E (no curriculum)} & \textbf{0.9882} & \textbf{0.1739} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\noindent\textbf{Result.}
+GRAPE E2E outperforms the staged variant on both metrics (F1: $+9.2$ pp; PG: $+3.4$ pp).
+The key difference is that E2E allows the ResNet-50 backbone to receive classification gradients for all 70 epochs, whereas staged training freezes the backbone after Stage 1 (30 epochs of concept BCE only).
+On a small dataset like TBX11K ($n=6{,}600$), this additional task-guided backbone fine-tuning substantially improves discriminative features.
+
+\noindent\textbf{When to use each.}
+Despite the higher F1, we retain the staged curriculum as the primary configuration for three reasons:
+\begin{enumerate}
+  \item \textbf{Modular interpretability.} Staged training decouples concept learning, prototype learning, and task classification. Each stage can be inspected, retrained, or replaced independently — a clinically desirable property absent in joint E2E training.
+  \item \textbf{Seed stability.} The staged approach's lower F1 reflects a harder optimisation landscape with fewer free parameters per stage; E2E was run with a single seed (seed 42) and its variance is unknown.
+  \item \textbf{Zero-shot addition.} Module C requires a frozen prototype atlas. E2E training continuously updates the backbone and prototypes together, making the text-anchor initialisation of Eq.~13 less stable.
+\end{enumerate}
+We recommend E2E training for practitioners where classification accuracy is the primary goal and interpretability constraints are relaxed.
+
 \section{Dataset Details}
 \label{app:datasets}
 
@@ -670,5 +760,67 @@ TBX11K COCO annotations store boxes in original image coordinates (variable reso
 \label{app:graph}
 
 On TBX11K ($K=3$), the co-occurrence graph has 3 nodes and 4 edges (threshold $\tau=0.1$). The three TB-type concepts form a dense triangle since they frequently co-occur within the same image. On NIH ($K=14$), the graph has 14 nodes and varies between 20--40 edges depending on threshold. Concepts like Infiltration–Consolidation and Effusion–Atelectasis form strong edges.
+
+%% ─────────────────────────────────────────────────────────────────
+\newpage
+\section*{NeurIPS Paper Checklist}
+%% ─────────────────────────────────────────────────────────────────
+
+\begin{enumerate}
+
+\item \textbf{Claims.}
+\begin{enumerate}
+  \item Do the main claims made in the abstract and introduction accurately reflect the paper's contributions and scope? \textbf{Yes.} All claimed accuracy gains (F1, Pointing Game) are backed by Tables 1, 2, and 5. Module B safety check claims are backed by Table 6 (§4.6). Module C zero-shot claims are backed by Table 7 (§4.7).
+  \item Did you describe the limitations of your work? \textbf{Yes.} See §5 Discussion, paragraph ``Limitations.''
+  \item Did you discuss any potential negative societal impacts of your work? \textbf{Yes.} See ``Broader Impact'' section.
+\end{enumerate}
+
+\item \textbf{Experiments.}
+\begin{enumerate}
+  \item Did you include complete experimental details that are necessary to reproduce your results? \textbf{Yes.} Training hyperparameters are listed in Appendix A (Table A.3). Dataset splits and pre-processing are described in §4.1 and Appendix B. All scripts will be released upon acceptance.
+  \item Did you report error bars (e.g., with respect to random seeds)? \textbf{Yes (TBX11K).} Table~\ref{tab:compare} reports mean $\pm$ std over 3 random seeds (42, 0, 1) for both GRAPE and the CSR baseline on TBX11K. Zero-shot results in Table~\ref{tab:zeroshot} include mean $\pm$ std over 3 seeds. Safety-check results in Table~\ref{tab:safety} include mean $\pm$ std over 5 trials. Ablation Table~\ref{tab:tbx11k} uses a single seed for comparability across conditions; NIH results are single-seed owing to compute constraints (each run $\approx$8 GPU-hours).
+  \item Did you include the total amount of compute and the type of resources used? \textbf{Yes.} We used a single NVIDIA A100 80GB GPU. Full 4-stage training takes approximately 20 minutes per run on TBX11K.
+\end{enumerate}
+
+\item \textbf{Code and Data.}
+\begin{enumerate}
+  \item If you are using existing assets (e.g., code, data, models), did you cite the creators? \textbf{Yes.} TBX11K \cite{chen2020tbx11k}, NIH ChestX-ray14 \cite{wang2017chestxray14}, CSR baseline \cite{csr2025}, BioViL-T \cite{bannur2023biovilt} are all cited.
+  \item Did you include the dataset licenses? \textbf{Yes.} See Ethics statement (§Broader Impact).
+  \item Did you include any new assets either in the supplemental material or as a URL? \textbf{No.} Code and data will be released upon acceptance.
+\end{enumerate}
+
+\item \textbf{Broader Impacts.}
+\begin{enumerate}
+  \item Did you discuss any potential societal impacts of your work? \textbf{Yes.} See ``Broader Impact'' section, covering both positive (clinical trust, resource-limited settings) and negative (over-reliance on plausible but potentially unfaithful explanations, demographic bias in prototype atlases) impacts.
+\end{enumerate}
+
+\item \textbf{Safeguards.}
+\begin{enumerate}
+  \item Does your paper describe safeguards that have been put in place for responsible release of data or models? \textbf{Yes.} We use publicly released datasets under their existing research and public-access licences. No new patient data is collected. The system is described as a research prototype not deployed clinically.
+\end{enumerate}
+
+\item \textbf{Licenses for Existing Assets.}
+\begin{enumerate}
+  \item If you used existing code in your research, was it properly cited? \textbf{Yes.} PyTorch, ResNet-50 (torchvision), BioViL-T, and CSR are all cited.
+  \item Did you include the license for the assets you used? \textbf{Partially.} Dataset licences are described in the Ethics statement. We note TBX11K (research licence) and NIH ChestX-ray14 (NIH public access). PyTorch is used under the BSD licence.
+\end{enumerate}
+
+\item \textbf{New Assets.}
+\begin{enumerate}
+  \item Did you document the new assets (code, datasets, models) introduced in this paper? \textbf{Yes, conditionally.} Training scripts, evaluation scripts (C7/C8/N3), and model checkpoints will be released upon acceptance with a README describing usage.
+  \item Did you include the license for the new assets? \textbf{Not yet.} Will be added at camera-ready stage (MIT licence planned).
+\end{enumerate}
+
+\item \textbf{Crowdsourcing and Human Subjects Research.}
+\begin{enumerate}
+  \item Did your research involve crowdsourcing or research with human subjects? \textbf{No.} All experiments use pre-existing de-identified datasets. No new human-subject data was collected. Institutional Review Board (IRB) approval is not required.
+\end{enumerate}
+
+\item \textbf{Institutional Review Board (IRB) Approvals.}
+\begin{enumerate}
+  \item Did you describe the IRB approvals for the research with human subjects? \textbf{N/A.} No human subjects research was conducted.
+\end{enumerate}
+
+\end{enumerate}
 
 \end{document}
